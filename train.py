@@ -28,6 +28,19 @@ NUM_EPISODES = 50_000
 SAVE_EVERY = 100
 STUCK_LIMIT = 100  # end episode if no progress for this many steps
 
+
+RESUME_CHECKPOINT = "checkpoints/mario_speedrun_21500.pth"  # adjust to your latest
+if os.path.exists(RESUME_CHECKPOINT):
+    try:
+        model.load_state_dict(torch.load(RESUME_CHECKPOINT, map_location=device))
+        print("Checkpoint loaded successfully")
+    except Exception as e:
+        print("Load failed:", e)
+    
+    agent.update_target_network()  # sync target net to match
+    agent.epsilon = agent.epsilon_min  # you're past exploration phase already
+    print(f"Resumed from {RESUME_CHECKPOINT}")
+
 for episode in range(NUM_EPISODES):
 
     state, info = env.reset()
@@ -87,5 +100,10 @@ for episode in range(NUM_EPISODES):
         checkpoint_path = os.path.join(CHECKPOINT_DIR, f"mario_speedrun_{episode + 1}.pth")
         torch.save(model.state_dict(), checkpoint_path)
         print(f"  -> Saved checkpoint: {checkpoint_path}")
+
+    if total_reward > 1000 and info['x_pos'] > 1000:
+        best_path = os.path.join(CHECKPOINT_DIR, f"mario_best_{episode + 1}_r{int(total_reward)}_x{info['x_pos']}.pth")
+        torch.save(model.state_dict(), best_path)
+        print(f"  -> Saved high-performance checkpoint: {best_path}")
 
 env.close()
